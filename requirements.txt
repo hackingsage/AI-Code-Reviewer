@@ -1,0 +1,5 @@
+# Core
+pyyaml>=6.0
+
+# Optional (safe to keep even if unused)
+requests>=2.31.0

@@ -1,0 +1,33 @@
+{
+  "name": "ai-code-review",
+  "displayName": "AI Code Review",
+  "description": "Local AI-powered code review with safe accept/reject fixes",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:aiReview.run"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiReview.run",
+        "title": "AI Code Review: Run"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.107.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,49 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# =========================
+# Python build / test
+# =========================
+build/
+dist/
+.eggs/
+*.egg-info/
+.coverage
+.pytest_cache/
+.mypy_cache/
+
+# =========================
+# Logs & runtime artifacts
+# =========================
+*.log
+review.json
+.ai_review_cache.json
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDEs
+# =========================
+.idea/
+*.iml
+.vscode/settings.json
+.vscode/launch.json
+
+# =========================
+# Local configs
+# =========================
+.ai-review.yml
