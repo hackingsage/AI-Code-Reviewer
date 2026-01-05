@@ -112,7 +112,7 @@ pip install -r requirements.txt
 ollama serve
 ollama pull deepseek-coder:6.7b
 ```
-
+Also please check the llm/ollama_client.py (you need to add some location to paths)
 > 💡 On CPU-only machines, smaller models work faster.
 
 ---
