@@ -1,97 +1,42 @@
 import os
-import json
 import pickle
 
 
-def load_data(path):
-    # SECURITY: pickle
-    with open(path, "rb") as f:
-        return pickle.loads(f.read())
-
-
-def run_command(cmd):
-    # SECURITY: os.system
-    os.system(cmd)
-
-
-def insecure_eval(expr):
+def insecure_eval(x):
     # SECURITY: eval
-    return eval(expr)
+    return eval(x)
 
 
 def normalize(values):
     # LOGIC + PERFORMANCE
     total = sum(values)
-    result = []
+    out = []
 
-    for i in range(len(values)):  # len() in loop
-        result.append(values[i] / total)
+    for i in range(len(values)):
+        out.append(values[i] / total)
 
-    return result
-
-
-def compute_stats(data, scale=1.0, cache=[]):
-    # LOGIC: mutable default
-    scaled = []
-
-    for i in range(len(data)):
-        scaled.append(data[i] * scale)
-
-    cache.append(scaled)
-
-    return {
-        "mean": sum(scaled) / len(scaled),
-        "count": len(scaled),
-    }
+    return out
 
 
-def bad_flag(flag):
-    # LOGIC: == True / False
-    if flag == True:
-        return "on"
-    elif flag == False:
-        return "off"
-    return None
-
-
-def deep_nesting(n):
-    # COMPLEXITY
-    total = 0
-    for i in range(n):
-        for j in range(n):
-            if i % 2 == 0:
-                for k in range(3):
-                    total += i + j + k
-    return total
-
-
-class Processor:
-    def __init__(self, items=[]):
+class Cache:
+    def __init__(self, data=[]):
         # LOGIC: mutable default
-        self.items = items
+        self.data = data
 
-    def process(self):
-        # PERFORMANCE: len in loop
-        total = 0
-        for i in range(len(self.items)):
-            total += self.items[i]
-        return total
+    def add(self, x):
+        self.data.append(x)
 
 
 def main():
-    data = [1, 2, 3]
+    run = insecure_eval("1 + 1")
+    print(run)
 
-    run_command("echo test")
-    insecure_eval("1 + 1")
+    normalize([1, 2, 3])
 
-    print(normalize(data))
-    print(compute_stats(data))
-    print(bad_flag(True))
-    print(deep_nesting(2))
+    c = Cache()
+    c.add(10)
 
-    p = Processor()
-    p.items.extend(data)
-    print(p.process())
+    os.system("echo done")  # SECURITY
 
 
 if __name__ == "__main__":
