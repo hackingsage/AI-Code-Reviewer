@@ -23,14 +23,12 @@ class LLMClient:
         if not raw:
             return None
 
-        # 1️⃣ Extract JSON object (best-effort)
         match = re.search(r"\{[\s\S]*?\}", raw)
         if not match:
             return None
 
         json_text = match.group(0)
 
-        # 2️⃣ Try to parse JSON
         try:
             data = json.loads(json_text)
         except json.JSONDecodeError:
@@ -41,8 +39,6 @@ class LLMClient:
             return None
 
         expr = expr.strip()
-
-        # 3️⃣ HARD SAFETY CHECKS
 
         # Single expression only
         try:

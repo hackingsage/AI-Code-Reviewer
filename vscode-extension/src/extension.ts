@@ -31,7 +31,6 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Apply AI fix (surgical removal)
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "aiReview.applyFix",
