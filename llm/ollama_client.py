@@ -1,8 +1,14 @@
 import subprocess
 
+"""
+Kindly add OLLAMA_PATH to your ollama.exe and also select the
+model you wanna work with.
+"""
+
+
 OLLAMA_PATH = "PATH_TO_OLLAMA"
 
-def ollama_call(prompt: str, system: str, model: str = "deepseek-coder:6.7b") -> str:
+def ollama_call(prompt: str, system: str, model: str = "MODEL") -> str:
     full_prompt = f"{system}\n\n{prompt}"
 
     completed = subprocess.run(
