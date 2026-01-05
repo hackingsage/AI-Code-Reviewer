@@ -1,3 +1,4 @@
+import ast
 import json
 import re
 from typing import Optional
@@ -13,26 +14,57 @@ class LLMClient:
         self.model_call = model_call
 
     def generate_fix(self, issue):
-        prompt = FIX_PROMPT.format(
-            code=issue.code_snippet,
-            message=issue.message,
+
+        raw = self.model_call(
+            prompt=FIX_PROMPT.format(code=issue.code_snippet),
+            system=SYSTEM_PROMPT,
         )
 
-        try:
-            raw = self.model_call(prompt=prompt, system=SYSTEM_PROMPT)
-            match = re.search(r"\{.*\}", raw, re.S)
-            if not match:
-                return None
-
-            data = json.loads(match.group())
-            fixed_code = data.get("fixed_code")
-
-            if not fixed_code:
-                return None
-            return fixed_code.strip()
-
-        except Exception:
+        if not raw:
             return None
+
+        # 1️⃣ Extract JSON object (best-effort)
+        match = re.search(r"\{[\s\S]*?\}", raw)
+        if not match:
+            return None
+
+        json_text = match.group(0)
+
+        # 2️⃣ Try to parse JSON
+        try:
+            data = json.loads(json_text)
+        except json.JSONDecodeError:
+            return None
+
+        expr = data.get("fixed_expression")
+        if not isinstance(expr, str):
+            return None
+
+        expr = expr.strip()
+
+        # 3️⃣ HARD SAFETY CHECKS
+
+        # Single expression only
+        try:
+            tree = ast.parse(expr, mode="eval")
+        except SyntaxError:
+            return None
+
+        # No imports
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                return None
+
+        # No function / class definitions
+        if any(isinstance(node, (ast.FunctionDef, ast.ClassDef)) for node in ast.walk(tree)):
+            return None
+
+        # No multiline replacements
+        if "\n" in expr or len(expr) > 80:
+            return None
+
+        return expr
+
 
 
     def review_issue(self, issue):

@@ -6,7 +6,8 @@ model you wanna work with.
 """
 
 
-OLLAMA_PATH = "PATH_TO_OLLAMA"
+# OLLAMA_PATH = "PATH_TO_OLLAMA"
+OLLAMA_PATH = r"C:\\Users\\Arul\AppData\\Local\\Programs\\Ollama\\ollama.exe"
 
 def ollama_call(prompt: str, system: str, model: str = "MODEL") -> str:
     full_prompt = f"{system}\n\n{prompt}"

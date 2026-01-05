@@ -9,26 +9,26 @@ Rules:
 """
 
 FIX_PROMPT = """
-You are given a code issue and its exact code snippet.
+You are reviewing Python code.
 
-Message:
-{message}
+RULES (STRICT):
+- You may ONLY replace the expression that contains the bug.
+- Do NOT add imports.
+- Do NOT add new statements.
+- Do NOT modify function signatures.
+- Output MUST be a single valid Python expression.
+- Do NOT include explanations.
+- Do NOT include markdown.
 
-Code:
+Given this buggy expression:
 {code}
 
-Your task:
-- Propose a FIXED version of the code.
-- Preserve formatting and indentation.
-- Only modify the minimal necessary lines.
-- If no safe fix exists, respond with null.
-
-Respond ONLY in JSON:
-
+Return JSON exactly in this form:
 {{
-  "fixed_code": "..."
+  "fixed_expression": "<single Python expression>"
 }}
 """
+
 
 
 REVIEW_PROMPT = """

@@ -140,20 +140,8 @@ Press **F5** to launch the Extension Development Host.
 
 ---
 
-## 🧪 Example
-
-```python
-def run(x):
-    return eval(x)
-```
-
-**Result in VS Code:**
-
-* ❗ Security warning underlined
-* 💡 “AI: Apply suggested fix”
-* 🔍 Diff preview
-* ✅ Accept or ❌ Reject
-
+## 🧪 Demo
+![Demo](docs/demo.gif)
 ---
 
 ## 🧠 Design Philosophy
