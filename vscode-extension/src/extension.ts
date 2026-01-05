@@ -1,8 +1,11 @@
 import * as vscode from "vscode";
 import { runReview } from "./runner";
 
-// In-memory cache shared with runner
-export const reviewCache = new Map<
+// Cache: file → diagnostics
+const diagnosticsByFile = new Map<string, vscode.Diagnostic[]>();
+
+// Cache: file → analysis result
+const reviewCache = new Map<
   string,
   { mtime: number; data: any[] }
 >();
@@ -13,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(diagnostics);
 
-  // Run review command
+  // Run static + AI review
   context.subscriptions.push(
     vscode.commands.registerCommand("aiReview.run", () => {
       const editor = vscode.window.activeTextEditor;
@@ -22,42 +25,79 @@ export function activate(context: vscode.ExtensionContext) {
       runReview(
         editor.document.fileName,
         diagnostics,
-        reviewCache
+        reviewCache,
+        diagnosticsByFile
       );
     })
   );
 
-  // Clear diagnostics + cache on save
+  // Apply AI fix (surgical removal)
   context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument(doc => {
-      diagnostics.delete(doc.uri);
-      reviewCache.delete(doc.fileName);
-    })
+    vscode.commands.registerCommand(
+      "aiReview.applyFix",
+      async (uri: vscode.Uri, range: vscode.Range, fix: string) => {
+        // 🔒 Guardrails — NEVER trust AI blindly
+        if (
+          !fix ||
+          fix.includes("\n") ||          // no multi-line edits
+          fix.length > 100               // no large rewrites
+        ) {
+          vscode.window.showWarningMessage(
+            "AI fix was rejected: unsafe or too large"
+          );
+          return;
+        }
+
+        // Extra safety: do not allow imports
+        if (/\bimport\b/.test(fix)) {
+          vscode.window.showWarningMessage(
+            "AI fix was rejected: contains import"
+          );
+          return;
+        }
+
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(uri, range, fix);
+
+        const applied = await vscode.workspace.applyEdit(edit);
+        if (!applied) return;
+
+        // 🧠 Remove ONLY the fixed diagnostic
+        const existing = diagnosticsByFile.get(uri.fsPath);
+        if (!existing) return;
+
+        const remaining = existing.filter(
+          d => !d.range.intersection(range)
+        );
+
+        diagnosticsByFile.set(uri.fsPath, remaining);
+        diagnostics.set(uri, remaining);
+      }
+    )
   );
 
-  // Code action provider (Accept AI fix)
+
+  // Code actions provider
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
       ["python"],
       {
-        provideCodeActions(document, range, context) {
+        provideCodeActions(document, range, ctx) {
           const actions: vscode.CodeAction[] = [];
 
-          for (const diag of context.diagnostics) {
+          for (const diag of ctx.diagnostics) {
             const fix = (diag as any).fix;
             if (!fix) continue;
-
-            // Only show action if cursor overlaps diagnostic
             if (!diag.range.intersection(range)) continue;
 
             const action = new vscode.CodeAction(
-              "AI: Apply suggested fix",
+              "Code Review: Apply Suggested Fix",
               vscode.CodeActionKind.QuickFix
             );
 
             action.command = {
               command: "aiReview.applyFix",
-              title: "Apply AI Fix",
+              title: "AI Apply Fix",
               arguments: [document.uri, diag.range, fix],
             };
 
@@ -67,22 +107,15 @@ export function activate(context: vscode.ExtensionContext) {
           return actions;
         },
       },
-      {
-        providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
-      }
+      { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }
     )
   );
 
-  // Apply fix safely (diff + undo handled by VS Code)
+  // IMPORTANT: do NOT clear diagnostics on save
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "aiReview.applyFix",
-      (uri: vscode.Uri, range: vscode.Range, fix: string) => {
-        const edit = new vscode.WorkspaceEdit();
-        edit.replace(uri, range, fix);
-        vscode.workspace.applyEdit(edit);
-      }
-    )
+    vscode.workspace.onDidSaveTextDocument(doc => {
+      reviewCache.delete(doc.fileName);
+    })
   );
 }
 

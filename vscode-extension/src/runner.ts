@@ -6,47 +6,52 @@ import * as path from "path";
 function computeRange(
   document: vscode.TextDocument,
   line: number,
-  snippet: string
+  snippet?: string
 ): vscode.Range {
   const textLine = document.lineAt(line - 1).text;
 
-  const idx = textLine.indexOf(snippet.trim());
+  // Try exact snippet match (best effort)
+  if (snippet) {
+    const clean = snippet.trim().split("\n")[0];
+    const idx = textLine.indexOf(clean);
+    if (idx !== -1) {
+      return new vscode.Range(
+        line - 1,
+        idx,
+        line - 1,
+        idx + clean.length
+      );
+    }
+  }
 
-  if (idx !== -1) {
+  // Fallback: underline first meaningful token
+  const match = textLine.match(/[A-Za-z_][A-Za-z0-9_]*/);
+  if (match && match.index !== undefined) {
     return new vscode.Range(
       line - 1,
-      idx,
+      match.index,
       line - 1,
-      idx + snippet.trim().length
+      match.index + match[0].length
     );
   }
 
-  // fallback: underline first token
-  return new vscode.Range(
-    line - 1,
-    0,
-    line - 1,
-    Math.min(textLine.length, 80)
-  );
+  return new vscode.Range(line - 1, 0, line - 1, 1);
 }
-
 
 export function runReview(
   filePath: string,
   diagnostics: vscode.DiagnosticCollection,
-  reviewCache: Map<string, { mtime: number; data: any[] }>
+  reviewCache: Map<string, { mtime: number; data: any[] }>,
+  diagnosticsByFile: Map<string, vscode.Diagnostic[]>
 ) {
   const uri = vscode.Uri.file(filePath);
-
-  // Clear previous diagnostics
-  diagnostics.delete(uri);
 
   const stat = fs.statSync(filePath);
   const cached = reviewCache.get(filePath);
 
-  // Use cache if file unchanged
+  // Reuse cached results if unchanged
   if (cached && cached.mtime === stat.mtimeMs) {
-    applyDiagnostics(uri, cached.data, diagnostics);
+    applyDiagnostics(uri, cached.data, diagnostics, diagnosticsByFile);
     vscode.window.setStatusBarMessage(
       "AI Code Review (cached)",
       2000
@@ -54,7 +59,6 @@ export function runReview(
     return;
   }
 
-  // Absolute path to review.py (VS Code safe)
   const reviewScript = path.join(
     __dirname,
     "..",
@@ -92,7 +96,7 @@ export function runReview(
         data,
       });
 
-      applyDiagnostics(uri, data, diagnostics);
+      applyDiagnostics(uri, data, diagnostics, diagnosticsByFile);
 
       vscode.window.setStatusBarMessage(
         "AI Code Review completed",
@@ -105,17 +109,23 @@ export function runReview(
 function applyDiagnostics(
   uri: vscode.Uri,
   data: any[],
-  diagnostics: vscode.DiagnosticCollection
+  diagnostics: vscode.DiagnosticCollection,
+  diagnosticsByFile: Map<string, vscode.Diagnostic[]>
 ) {
+  const document = vscode.workspace.textDocuments.find(
+    d => d.uri.fsPath === uri.fsPath
+  );
+  if (!document) return;
+
   const issues: vscode.Diagnostic[] = [];
 
   for (const item of data) {
     if (!item.line || item.line < 1) continue;
 
     const range = computeRange(
-      vscode.window.activeTextEditor!.document,
+      document,
       item.line,
-      item.code_snippet ?? ""
+      item.code_snippet
     );
 
     const severity =
@@ -131,11 +141,16 @@ function applyDiagnostics(
       severity
     );
 
-    // Attach fix safely (may be null)
-    (diag as any).fix = item.fix ?? null;
+    if (item.fix) {
+      console.log("FIX AVAILABLE:", item.fix);
+    } else {
+      console.log("NO FIX FOR:", item.rule);
+    }
 
+    (diag as any).fix = item.fix ?? null;
     issues.push(diag);
   }
 
+  diagnosticsByFile.set(uri.fsPath, issues);
   diagnostics.set(uri, issues);
 }
