@@ -1,3 +1,4 @@
+import os
 import argparse
 import json
 from typing import List
@@ -51,7 +52,7 @@ def main():
     results: List[dict] = []
 
     llm = LLMClient(
-        model_call=lambda prompt, system: ollama_call(
+        model_call=lambda prompt, system=None: ollama_call(
             prompt, system, model="deepseek-coder:6.7b"
         )
     )
@@ -70,7 +71,11 @@ def main():
             entry["fix"] = fix
 
     if args.json:
-        with open("review.json", "w", encoding="utf-8") as f:
+        OUTPUT_PATH = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "review.json"
+        )
+        with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
     else:
         for r in results:
